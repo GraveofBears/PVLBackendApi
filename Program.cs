@@ -11,9 +11,6 @@ using PVLBackendApi.Services;
 using PVLBackendApi.Controllers;
 using PVLBackendApi.Interfaces;
 
-
-
-
 var builder = WebApplication.CreateBuilder(args);
 
 // Load configuration values
@@ -48,8 +45,29 @@ builder.Services.AddAuthentication(options =>
 });
 
 builder.Services.AddAuthorization();
+
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerGen(c =>
+{
+    c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    {
+        In = ParameterLocation.Header,
+        Description = "Enter 'Bearer' followed by your JWT",
+        Name = "Authorization",
+        Type = SecuritySchemeType.ApiKey
+    });
+    c.AddSecurityRequirement(new OpenApiSecurityRequirement {
+        {
+            new OpenApiSecurityScheme {
+                Reference = new OpenApiReference {
+                    Type = ReferenceType.SecurityScheme,
+                    Id = "Bearer"
+                }
+            },
+            Array.Empty<string>()
+        }
+    });
+});
 
 var app = builder.Build();
 
@@ -73,15 +91,15 @@ app.MapGet("/users", [Authorize] async (AuthDbContext db) =>
 app.MapPost("/login", async (LoginRequest login, AuthDbContext db) =>
 {
     var user = await db.Users
-        .FirstOrDefaultAsync(u => u.Username == login.Username && u.Password == login.Password);
+        .FirstOrDefaultAsync(u => u.Username == login.Username);
 
-    if (user is null)
+    if (user is null || !BCrypt.Net.BCrypt.Verify(login.Password, user.Password))
         return Results.Unauthorized();
 
     var claims = new[]
     {
-        new System.Security.Claims.Claim("sub", user.Id.ToString()),
-        new System.Security.Claims.Claim("name", user.Username)
+        new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
+        new Claim(ClaimTypes.Name, user.Username)
     };
 
     var token = new JwtSecurityToken(
@@ -106,5 +124,3 @@ using (var scope = app.Services.CreateScope())
 }
 
 app.Run();
-
-
