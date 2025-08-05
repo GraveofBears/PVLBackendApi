@@ -28,8 +28,9 @@ public class SqliteUserRepository : IUserRepository
         {
             return new User
             {
-                Username = reader.GetString(reader.GetOrdinal("Username")),
-                Password = reader.GetString(reader.GetOrdinal("Password"))
+                Username = reader.GetString(reader.GetOrdinal("username")),
+                PasswordHash = reader.GetString(reader.GetOrdinal("passwordHash")),
+                IsSuspended = reader.GetInt32(reader.GetOrdinal("isSuspended")) != 0
                 // Pull other fields if needed
             };
         }

@@ -7,7 +7,6 @@ using PVLBackendApi.Interfaces;
 using PVLBackendApi.Models;
 using PVLBackendApi.Services;
 
-
 namespace PVLBackendApi.Services
 {
     public class AuthService : IAuthService
@@ -45,13 +44,22 @@ namespace PVLBackendApi.Services
                 };
             }
 
-            bool passwordValid = PasswordHelper.VerifyPassword(user.Password, password);
+            bool passwordValid = PasswordHelper.VerifyPassword(user.PasswordHash, password);
             if (!passwordValid)
             {
                 return new LoginResult
                 {
                     Success = false,
                     Message = "Invalid password."
+                };
+            }
+
+            if (user.IsSuspended)
+            {
+                return new LoginResult
+                {
+                    Success = false,
+                    Message = "Account is suspended. Please contact support."
                 };
             }
 
@@ -76,7 +84,7 @@ namespace PVLBackendApi.Services
             var claims = new[]
             {
                 new Claim(ClaimTypes.Name, username),
-                new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()) // Unique token ID
+                new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
             };
 
             var token = new JwtSecurityToken(

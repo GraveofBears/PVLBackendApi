@@ -106,7 +106,7 @@ app.MapPost("/login", async (LoginRequest login, AuthDbContext db) =>
     var user = await db.Users
         .FirstOrDefaultAsync(u => u.Username == login.Username);
 
-    if (user is null || !BCrypt.Net.BCrypt.Verify(login.Password, user.Password))
+    if (user is null || !BCrypt.Net.BCrypt.Verify(login.Password, user.PasswordHash))
         return Results.Unauthorized();
 
     var claims = new[]
