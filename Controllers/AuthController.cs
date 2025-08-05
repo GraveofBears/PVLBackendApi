@@ -11,7 +11,7 @@ using PVLBackendApi.Interfaces;
 namespace PVLBackendApi.Controllers
 {
     [ApiController]
-    [Route("api/[controller]")]
+    [Route("api/auth")]
     public class AuthController : ControllerBase
     {
         private readonly IAuthService _authService;

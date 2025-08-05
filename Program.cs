@@ -45,7 +45,7 @@ builder.Services.AddAuthentication(options =>
 });
 
 builder.Services.AddAuthorization();
-
+builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
@@ -69,6 +69,18 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
+builder.Services.AddCors(options =>
+{
+    options.AddDefaultPolicy(policy =>
+    {
+        policy.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod();
+    });
+});
+
+builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<IUserRepository>(provider =>
+    new SqliteUserRepository(dbPath));
+
 var app = builder.Build();
 
 // Use middleware
@@ -80,6 +92,7 @@ if (app.Environment.IsDevelopment())
 
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseCors();
 
 // Define endpoints
 app.MapGet("/users", [Authorize] async (AuthDbContext db) =>
@@ -115,6 +128,8 @@ app.MapPost("/login", async (LoginRequest login, AuthDbContext db) =>
     var tokenString = new JwtSecurityTokenHandler().WriteToken(token);
     return Results.Ok(new { token = tokenString });
 });
+
+app.MapControllers();
 
 // Make sure DB is created
 using (var scope = app.Services.CreateScope())
