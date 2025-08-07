@@ -1,4 +1,5 @@
 using BCrypt.Net;
+using Serilog;
 
 public static class PasswordHelper
 {
@@ -8,8 +9,12 @@ public static class PasswordHelper
     public static string HashPassword(string password)
     {
         if (string.IsNullOrWhiteSpace(password))
+        {
+            Log.Warning("Attempted to hash an empty or null password.");
             throw new ArgumentException("Password cannot be null or empty.", nameof(password));
+        }
 
+        Log.Information("Hashing password using BCrypt.");
         return BCrypt.Net.BCrypt.EnhancedHashPassword(password);
     }
 
@@ -19,15 +24,20 @@ public static class PasswordHelper
     public static bool VerifyPassword(string hashedPassword, string inputPassword)
     {
         if (string.IsNullOrWhiteSpace(hashedPassword) || string.IsNullOrWhiteSpace(inputPassword))
+        {
+            Log.Warning("Password verification failed due to empty input.");
             return false;
+        }
 
         try
         {
-            return BCrypt.Net.BCrypt.EnhancedVerify(inputPassword, hashedPassword);
+            var result = BCrypt.Net.BCrypt.EnhancedVerify(inputPassword, hashedPassword);
+            Log.Information("Password verification result: {Result}", result);
+            return result;
         }
-        catch
+        catch (Exception ex)
         {
-            // If verification throws (e.g., invalid format), fail gracefully.
+            Log.Error(ex, "Exception during password verification.");
             return false;
         }
     }

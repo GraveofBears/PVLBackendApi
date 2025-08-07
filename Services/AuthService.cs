@@ -1,11 +1,11 @@
-using System.IdentityModel.Tokens.Jwt;
+﻿using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using Microsoft.IdentityModel.Tokens;
 using PVLBackendApi.Interfaces;
 using PVLBackendApi.Models;
-using PVLBackendApi.Services;
 
 namespace PVLBackendApi.Services
 {
@@ -13,11 +13,13 @@ namespace PVLBackendApi.Services
     {
         private readonly IUserRepository _repo;
         private readonly IConfiguration _config;
+        private readonly ILogger<AuthService> _logger;
 
-        public AuthService(IUserRepository repo, IConfiguration config)
+        public AuthService(IUserRepository repo, IConfiguration config, ILogger<AuthService> logger)
         {
             _repo = repo;
             _config = config;
+            _logger = logger;
         }
 
         /// <summary>
@@ -25,8 +27,11 @@ namespace PVLBackendApi.Services
         /// </summary>
         public async Task<LoginResult> VerifyLoginAsync(string username, string password)
         {
+            _logger.LogInformation("Login attempt for user: {Username}", username);
+
             if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
             {
+                _logger.LogWarning("Login failed: Missing username or password.");
                 return new LoginResult
                 {
                     Success = false,
@@ -37,6 +42,7 @@ namespace PVLBackendApi.Services
             var user = await _repo.GetUserByUsernameAsync(username);
             if (user is null)
             {
+                _logger.LogWarning("Login failed: User '{Username}' not found.", username);
                 return new LoginResult
                 {
                     Success = false,
@@ -44,9 +50,17 @@ namespace PVLBackendApi.Services
                 };
             }
 
+            // 🧪 Debug logging: raw password and stored hash
+            _logger.LogInformation("🔍 Incoming password: '{Password}'", password);
+            _logger.LogInformation("🔍 Stored hash for '{Username}': '{Hash}'", username, user.PasswordHash);
+
+            // 🧪 Manual verification for deeper insight
             bool passwordValid = PasswordHelper.VerifyPassword(user.PasswordHash, password);
+            _logger.LogInformation("Password verification for '{Username}': {IsValid}", username, passwordValid);
+
             if (!passwordValid)
             {
+                _logger.LogWarning("Login failed: Invalid password for user '{Username}'.", username);
                 return new LoginResult
                 {
                     Success = false,
@@ -56,6 +70,7 @@ namespace PVLBackendApi.Services
 
             if (user.IsSuspended)
             {
+                _logger.LogWarning("Login failed: Account for user '{Username}' is suspended.", username);
                 return new LoginResult
                 {
                     Success = false,
@@ -63,6 +78,7 @@ namespace PVLBackendApi.Services
                 };
             }
 
+            _logger.LogInformation("Login successful for user: {Username}", username);
             return new LoginResult
             {
                 Success = true,
@@ -76,6 +92,8 @@ namespace PVLBackendApi.Services
         /// </summary>
         public string GenerateJwtToken(string username)
         {
+            _logger.LogInformation("Generating JWT token for user: {Username}", username);
+
             var key = new SymmetricSecurityKey(
                 Encoding.UTF8.GetBytes(_config["Jwt:Key"] ?? throw new InvalidOperationException("Missing JWT Key")));
 
@@ -95,7 +113,10 @@ namespace PVLBackendApi.Services
                 signingCredentials: creds
             );
 
-            return new JwtSecurityTokenHandler().WriteToken(token);
+            var tokenString = new JwtSecurityTokenHandler().WriteToken(token);
+            _logger.LogInformation("JWT token generated for user: {Username}", username);
+
+            return tokenString;
         }
     }
 }

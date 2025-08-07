@@ -1,41 +1,58 @@
 using Microsoft.Data.Sqlite;
+using Microsoft.Extensions.Logging;
 using PVLBackendApi.Models;
-using PVLBackendApi.Services;
 using PVLBackendApi.Interfaces;
-
-
+using System.Collections.Generic;
+using System.Threading.Tasks;
 
 public class SqliteUserRepository : IUserRepository
 {
     private readonly string _connectionString;
+    private readonly ILogger<SqliteUserRepository> _logger;
 
-    public SqliteUserRepository(string dbPath)
+    public SqliteUserRepository(string dbPath, ILogger<SqliteUserRepository> logger)
     {
         _connectionString = $"Data Source={dbPath}";
+        _logger = logger;
     }
 
     public User? GetUserByUsername(string username)
     {
-        using var connection = new SqliteConnection(_connectionString);
-        connection.Open();
+        _logger.LogInformation("Attempting to retrieve user by username: {Username}", username);
 
-        var command = connection.CreateCommand();
-        command.CommandText = "SELECT * FROM Users WHERE Username = $username";
-        command.Parameters.AddWithValue("$username", username);
-
-        using var reader = command.ExecuteReader();
-        if (reader.Read())
+        try
         {
-            return new User
-            {
-                Username = reader.GetString(reader.GetOrdinal("username")),
-                PasswordHash = reader.GetString(reader.GetOrdinal("passwordHash")),
-                IsSuspended = reader.GetInt32(reader.GetOrdinal("isSuspended")) != 0
-                // Pull other fields if needed
-            };
-        }
+            using var connection = new SqliteConnection(_connectionString);
+            connection.Open();
+            _logger.LogInformation("Opened SQLite connection to: {ConnectionString}", _connectionString);
 
-        return null;
+            var command = connection.CreateCommand();
+            command.CommandText = "SELECT * FROM Users WHERE Username = $username";
+            command.Parameters.AddWithValue("$username", username);
+
+            using var reader = command.ExecuteReader();
+            if (reader.Read())
+            {
+                var user = new User
+                {
+                    Username = reader.GetString(reader.GetOrdinal("username")),
+                    PasswordHash = reader.GetString(reader.GetOrdinal("passwordHash")),
+                    IsSuspended = reader.GetInt32(reader.GetOrdinal("isSuspended")) != 0
+                    // Add other fields as needed
+                };
+
+                _logger.LogInformation("User '{Username}' found in database.", username);
+                return user;
+            }
+
+            _logger.LogWarning("User '{Username}' not found in database.", username);
+            return null;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error occurred while retrieving user '{Username}'", username);
+            return null;
+        }
     }
 
     public async Task<User?> GetUserByUsernameAsync(string username)
@@ -45,13 +62,13 @@ public class SqliteUserRepository : IUserRepository
 
     public async Task CreateUserAsync(User user)
     {
-        // Implement user creation logic here
+        _logger.LogWarning("CreateUserAsync is not yet implemented.");
         await Task.CompletedTask;
     }
 
     public async Task<IEnumerable<User>> GetAllUsersAsync()
     {
-        // Implement logic to get all users here
+        _logger.LogWarning("GetAllUsersAsync is not yet implemented.");
         return await Task.FromResult(new List<User>());
     }
 }
