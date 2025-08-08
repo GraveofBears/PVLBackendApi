@@ -48,10 +48,14 @@ namespace PVLBackendApi.Controllers
                 });
             }
 
-            // 🔍 Password Diagnostics
-            _logger.LogInformation("🔍 Incoming password: '{Password}'", request.Password);
-            _logger.LogInformation("🔍 Length: {Length}", request.Password.Length);
-            _logger.LogInformation("🔍 Char codes: {Codes}", string.Join(",", request.Password.Select(c => (int)c)));
+            // 🧪 Password Diagnostics
+            if (request.Password != null)
+            {
+                _logger.LogInformation("🔍 Incoming password: '{Password}'", request.Password);
+                _logger.LogInformation("🔍 Length: {Length}", request.Password.Length);
+                _logger.LogInformation("🔍 Char codes: {Codes}", string.Join(",", request.Password.Select(c => (int)c)));
+                _logger.LogInformation("🔍 Hex: {Hex}", string.Join(" ", request.Password.Select(c => ((int)c).ToString("X2"))));
+            }
 
             var result = await _authService.VerifyLoginAsync(request.Username, request.Password);
 
